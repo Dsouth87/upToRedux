@@ -12,7 +12,7 @@ const router = express.Router()
 // @desc    Create new user
 // @access  Public
 
-router.get(
+router.post(
   '/',
   [
     check('name', 'Name is required')
