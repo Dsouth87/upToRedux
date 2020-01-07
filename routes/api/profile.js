@@ -1,7 +1,10 @@
 const express = require('express')
 const auth = require('../../middleware/auth')
 const Profile = require('../../models/Profile')
+const User = require('../../models/User')
 const { check, validationResult } = require('express-validator')
+const config = require('config')
+const request = require('request')
 
 const router = express.Router()
 
@@ -189,11 +192,148 @@ router.put(
   }
 )
 
+// @route   DELETE api/profile/experience/:exp_id
+// @desc    Remove profile experience
+// @access  Private
+
+router.delete('/experience/:exp_id', auth, async (req, res) => {
+  try {
+    const profile = await Profile.findOne({ user: req.user.id })
+    const expIndex = profile.experience
+      .map(exp => exp.id)
+      .indexOf(req.params.exp_id)
+    profile.experience.splice(expIndex, 1)
+    profile.save()
+    return res.json({ msg: 'Experience Entry Removed' })
+  } catch (err) {
+    console.error(err.message)
+    return res.status(500).send('Server Error')
+  }
+})
+
+// @route   PUT api/profile/education
+// @desc    Add profile education
+// @access  Private
+
+router.put(
+  '/education',
+  [
+    auth,
+    [
+      check('school', 'School is required')
+        .not()
+        .isEmpty(),
+      check('degree', 'Degree is required')
+        .not()
+        .isEmpty(),
+      check('fieldofstudy', 'Field of Study is required')
+        .not()
+        .isEmpty(),
+      check('from', 'From is required')
+        .not()
+        .isEmpty()
+    ]
+  ],
+  async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() })
+    }
+
+    const {
+      school,
+      degree,
+      fieldofstudy,
+      from,
+      to,
+      current,
+      description
+    } = req.body
+
+    const newExp = {
+      school,
+      degree,
+      fieldofstudy,
+      from,
+      to,
+      current,
+      description
+    }
+
+    try {
+      const profile = await Profile.findOne({ user: req.user.id })
+      if (!profile) {
+        return res.status(400).json({ msg: 'No profile for this user' })
+      }
+      profile.education.unshift(newExp)
+      await profile.save()
+      return res.json(profile)
+    } catch (err) {
+      console.error(err.message)
+      return res.status(500).send('Server Error')
+    }
+  }
+)
+
+// @route   DELETE api/profile/education/:edu_id
+// @desc    Remove profile education
+// @access  Private
+
+router.delete('/education/:edu_id', auth, async (req, res) => {
+  try {
+    const profile = await Profile.findOne({ user: req.user.id })
+    const eduIndex = profile.experience
+      .map(edu => edu.id)
+      .indexOf(req.params.edu_id)
+    profile.education.splice(eduIndex, 1)
+    profile.save()
+    return res.json({ msg: 'Education Entry Removed' })
+  } catch (err) {
+    console.error(err.message)
+    return res.status(500).send('Server Error')
+  }
+})
+
+// @route   DELETE api/profile
+// @desc    Remove profile education
+// @access  Private
+
+router.delete('/', auth, async (req, res) => {
+  try {
+    // todo - remove posts
+    await Profile.findOneAndRemove({ user: req.user.id })
+    await User.findOneAndRemove({ _id: req.user.id })
+    return res.json({ msg: 'User removed' })
+  } catch (err) {
+    console.error(err.message)
+    return res.status(500).send('Server Error')
+  }
+})
+
+// @route   GET api/profile/github/:username
+// @desc    Get github repos
+// @access  Private
+
+router.get('/github/:username', auth, (req, res) => {
+  const options = {
+    uri: `https://api.github.com/users/${
+      req.params.username
+    }/repos?per_page=5&sort=created:asc&client_id=${config.get(
+      'githubClientId'
+    )}&client_secret=${config.get('githubSecret')}`,
+    method: 'GET',
+    headers: { 'user-agent': 'node.js' }
+  }
+  request(options, (error, response, body) => {
+    if (error) console.error(error)
+
+    if (response.statusCode !== 200) {
+      return res.status(404).json({ msg: 'No github data found' })
+    }
+    return res.json(JSON.parse(body))
+  })
+})
+
 module.exports = router
 
-// create experience
-// create education
-// delete user, profile, posts
-// delete education
-// delete experience
 // get github repo data from api
