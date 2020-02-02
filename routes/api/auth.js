@@ -29,7 +29,9 @@ router.post(
   '/',
   [
     check('email', 'Please enter a valid email').isEmail(),
-    check('password', 'Password is required').exists()
+    check('password', 'Password is required')
+      .not()
+      .isEmpty()
   ],
   async (req, res) => {
     // check correct data was sent in body
@@ -64,7 +66,7 @@ router.post(
       { expiresIn: 360000 },
       (error, token) => {
         if (error) throw error
-        res.json(token)
+        res.json({ token })
       }
     )
   }
