@@ -1,7 +1,12 @@
 import React, { Fragment } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Redirect } from 'react-router-dom'
+import { connect } from 'react-redux'
+import PropTypes from 'prop-types'
 
-const Landing = () => {
+const Landing = ({ isAuthorized }) => {
+  if (isAuthorized) {
+    return <Redirect to="/dashboard" />
+  }
   return (
     <Fragment>
       <section className="landing">
@@ -27,4 +32,12 @@ const Landing = () => {
   )
 }
 
-export default Landing
+Landing.propTypes = {
+  isAuthorized: PropTypes.bool
+}
+
+const mapStateToProps = state => ({
+  isAuthorized: state.auth.isAuthorized
+})
+
+export default connect(mapStateToProps)(Landing)
