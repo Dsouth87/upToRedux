@@ -2,6 +2,7 @@ const express = require('express')
 const auth = require('../../middleware/auth')
 const Profile = require('../../models/Profile')
 const User = require('../../models/User')
+const Posts = require('../../models/Posts')
 const { check, validationResult } = require('express-validator')
 const config = require('config')
 const request = require('request')
@@ -69,6 +70,7 @@ router.post(
         { $set: profileFields },
         { new: true, upsert: true }
       )
+      console.log('profile created/updated')
       return res.json(profile)
     } catch (err) {
       console.error(err.message)
@@ -83,7 +85,7 @@ router.post(
 
 router.get('/', async (req, res) => {
   try {
-    const profiles = await Profile.find()
+    const profiles = await Profile.find().populate('user', ['name', 'avatar'])
     res.json(profiles)
   } catch {
     console.error(err.message)
@@ -204,7 +206,7 @@ router.delete('/experience/:exp_id', auth, async (req, res) => {
       .indexOf(req.params.exp_id)
     profile.experience.splice(expIndex, 1)
     profile.save()
-    return res.json({ msg: 'Experience Entry Removed' })
+    return res.json(profile)
   } catch (err) {
     console.error(err.message)
     return res.status(500).send('Server Error')
@@ -282,12 +284,12 @@ router.put(
 router.delete('/education/:edu_id', auth, async (req, res) => {
   try {
     const profile = await Profile.findOne({ user: req.user.id })
-    const eduIndex = profile.experience
+    const eduIndex = profile.education
       .map(edu => edu.id)
       .indexOf(req.params.edu_id)
     profile.education.splice(eduIndex, 1)
     profile.save()
-    return res.json({ msg: 'Education Entry Removed' })
+    return res.json(profile)
   } catch (err) {
     console.error(err.message)
     return res.status(500).send('Server Error')
@@ -295,13 +297,18 @@ router.delete('/education/:edu_id', auth, async (req, res) => {
 })
 
 // @route   DELETE api/profile
-// @desc    Remove profile education
+// @desc    Delete posts, profile and user
 // @access  Private
 
 router.delete('/', auth, async (req, res) => {
   try {
-    // todo - remove posts
+    // remove posts
+    await Posts.deleteMany({ user: req.user.id })
+
+    // remove profile
     await Profile.findOneAndRemove({ user: req.user.id })
+
+    //remove
     await User.findOneAndRemove({ _id: req.user.id })
     return res.json({ msg: 'User removed' })
   } catch (err) {
@@ -314,7 +321,7 @@ router.delete('/', auth, async (req, res) => {
 // @desc    Get github repos
 // @access  Private
 
-router.get('/github/:username', auth, (req, res) => {
+router.get('/github/:username', (req, res) => {
   const options = {
     uri: `https://api.github.com/users/${
       req.params.username
