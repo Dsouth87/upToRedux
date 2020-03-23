@@ -1,0 +1,6 @@
+{
+  "mongoURI": "mongodb+srv://derek:fortgktt@cluster0-tecor.mongodb.net/test?retryWrites=true&w=majority",
+  "jwtSecret": "shhsupersecret",
+  "githubClientId": "5cc6d78cd0269a947aa7",
+  "githubSecret": "b0f5be3ee22b7afee54bc27efea30e777b7d5a50"
+}
